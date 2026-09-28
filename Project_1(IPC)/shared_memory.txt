@@ -1,0 +1,259 @@
+SHARED MEMORY
+A Fast IPC Mechanism and the Problems It Can Introduce
+Operating Systems | Inter-Process Communication | Person 3
+
+GOAL: Explain a fast IPC mechanism and the problems it can introduce.
+
+======================================================================
+1. WHAT IS SHARED MEMORY?
+======================================================================
+
+Shared memory is an Inter-Process Communication (IPC) mechanism in which
+the operating system allows two or more processes to access the SAME
+region of physical memory.
+
+Normally, every process has its own private virtual address space, and
+one process cannot read or write another process's memory. This
+isolation protects the system from accidental and malicious
+interference. Shared memory is the deliberate exception: the kernel sets
+up a memory region and maps it into the address space of every
+participating process.
+
+Analogy: Message passing is like sending letters between two offices.
+Shared memory is like placing a whiteboard in a room that both offices
+can walk into. It is extremely fast, but you need rules so that two
+people do not write on it at the same time.
+
+======================================================================
+2. HOW SHARED MEMORY WORKS
+======================================================================
+
+The life of a shared memory region has five stages:
+
+1. Create: One process asks the kernel to create a shared memory object
+   of a chosen size and gives it a name or key.
+
+2. Attach (map): Each process maps the object into its own virtual
+   address space. Each process gets its own pointer. The virtual
+   addresses may differ, but they all refer to the same physical pages.
+
+3. Access: Processes read and write using ordinary memory operations.
+   No system call is needed for each access.
+
+4. Detach: When a process is finished, it unmaps the region from its
+   address space.
+
+5. Destroy: The object is explicitly removed through an OS request. If
+   nobody removes it, it can persist and leak.
+
+Key insight: The kernel is involved only during setup and teardown. Once
+the region is mapped, data moves between processes without any further
+kernel involvement.
+
+======================================================================
+3. CREATING AND USING A SHARED MEMORY REGION
+======================================================================
+
+Operating systems provide two main families of functions. The steps are
+conceptually the same in both.
+
+  Step              POSIX               System V
+  ----------------  ------------------  ------------------------
+  Create or open    shm_open            shmget
+  Set the size      ftruncate           Given at creation
+  Attach / map      mmap (shared)       shmat
+  Detach / unmap    munmap              shmdt
+  Remove            shm_unlink          shmctl (remove command)
+
+Typical usage pattern:
+
+- Writer process: creates the region, sets its size, maps it, and
+  writes data into it.
+- Reader process: opens the same named region, maps it, and reads the
+  data the writer put there.
+- Cleanup: when both are done, each process unmaps the region and one of
+  them removes it.
+
+Both processes must agree on the region's name (or key) and on how the
+data inside it is laid out.
+
+======================================================================
+4. READING AND WRITING DATA
+======================================================================
+
+After mapping, the shared region behaves like any other block of memory
+in the program. A process can treat it as an array, a structure, or a
+simple buffer, and read or update any part of it directly.
+
+Practical rules:
+
+- Use a fixed, well-defined layout. Both processes must interpret the
+  bytes the same way (for example, a counter followed by a message
+  field).
+- Do not store raw pointers inside the region. Each process may map it
+  at a different address, so an address valid in one process is
+  meaningless in another. Use offsets or indices instead.
+- Track how much valid data exists. The region is just raw bytes, so
+  length fields or status flags are needed to know what is meaningful.
+- Set correct permissions. Only the intended processes should be able to
+  read or write.
+
+======================================================================
+5. WHY SHARED MEMORY IS FAST
+======================================================================
+
+With pipes, sockets, and message queues, every message passes through
+the kernel. Data is copied from the sender into a kernel buffer, then
+copied again from the kernel buffer to the receiver, with a system call
+on each side.
+
+  Aspect            Kernel-based IPC              Shared memory
+  ----------------  ----------------------------  -----------------------
+  Data copies       Two (sender to kernel,        None. Written once and
+                    kernel to receiver)           read in place
+  System calls      One per send and per receive  Only for setup/teardown
+  Context switches  Frequent                      Not needed per transfer
+  Large data        Copy cost grows with size     Size adds no copy cost
+
+Because access is a normal load or store operating at RAM speed, shared
+memory is widely regarded as the fastest IPC mechanism. This is why
+databases, web browsers, and video and graphics pipelines rely on it.
+
+======================================================================
+6. ADVANTAGES OF SHARED MEMORY
+======================================================================
+
+- Highest speed and lowest latency among all IPC methods.
+- Efficient for large data such as images, video frames, and big
+  buffers, since nothing is repeatedly copied.
+- Random access: any part of the data can be read or updated directly,
+  unlike a stream that must be consumed in order.
+- One-to-many sharing: many processes can read the same data at once.
+- Flexible design: the programmer decides the data layout and the
+  communication protocol.
+
+======================================================================
+7. PROBLEMS WITH SHARED MEMORY
+======================================================================
+
+The same features that make shared memory fast also make it dangerous.
+The OS steps out of the way, so it also stops protecting the processes
+from each other.
+
+- No built-in synchronization: The OS does not control who accesses the
+  region or when. Coordination is entirely the programmer's job.
+- Race conditions: Concurrent, unsynchronized access produces
+  unpredictable results.
+- Data corruption: A process may read data that is only partly written
+  (a torn read).
+- Hard to debug: Bugs depend on exact timing, so they appear randomly
+  and are difficult to reproduce.
+- Pointer problems: Absolute addresses stored in the region are invalid
+  in other processes.
+- Security risks: Weak permissions let unauthorized processes read or
+  modify the data.
+- Resource leaks: Regions persist until explicitly removed, even after
+  processes exit.
+- Same machine only: Unlike sockets, shared memory cannot span a
+  network.
+
+======================================================================
+8. RACE CONDITIONS
+======================================================================
+
+A race condition occurs when the outcome of a program depends on the
+timing or interleaving of processes accessing shared data, and at least
+one of them is writing. The result changes from run to run, depending on
+which process happens to get the CPU first.
+
+Classic example: the shared counter
+
+Two processes each want to add one to a shared counter that currently
+holds 5. The correct final value is 7. But adding one is not a single
+step. It is three separate steps:
+
+  1. Load the counter's value into a CPU register.
+  2. Add one to the register.
+  3. Store the result back into memory.
+
+If the two processes interleave these steps unluckily:
+
+  Time  Process A            Process B            Counter in memory
+  ----  -------------------  -------------------  -----------------
+  1     Loads value (sees 5)                      5
+  2                          Loads value (sees 5) 5
+  3     Adds one (gets 6)    Adds one (gets 6)    5
+  4     Stores 6                                  6
+  5                          Stores 6             6
+
+Expected result: 7. Actual result: 6. One update was completely lost.
+Running the program again might give a different answer, which is
+exactly what makes race conditions so hard to detect.
+
+Key term: The section of code that touches shared data is called the
+CRITICAL SECTION. Only one process should be inside it at any moment.
+
+======================================================================
+9. WHY SYNCHRONIZATION IS REQUIRED
+======================================================================
+
+Synchronization is needed for two distinct reasons:
+
+1. Mutual exclusion: only one process may be inside the critical
+   section at a time. This prevents lost updates and corrupted data.
+
+2. Ordering and coordination: a reader must not read before the writer
+   has finished writing. This is the classic producer-consumer problem.
+
+Common synchronization tools:
+
+- Semaphores: Counters that let processes wait for and signal each
+  other. A binary semaphore acts as a lock.
+- Mutexes: Locks ensuring only one process holds access at a time. They
+  can be placed inside the shared region itself.
+- Condition variables: Let a process sleep until another process
+  signals that something has changed.
+- Atomic operations: Hardware-supported indivisible updates, useful for
+  simple counters and flags.
+- File locks: Locks based on a file, usable as a simple cross-process
+  guard.
+
+How the counter race is fixed:
+
+Each process must acquire the lock before entering the critical section
+and release it afterward. Under this rule, the load, add, and store
+steps of one process cannot be interleaved with those of the other. The
+second process must wait until the first one finishes, so two
+increments always produce 7.
+
+======================================================================
+10. COMPARISON WITH OTHER IPC MECHANISMS
+======================================================================
+
+  Mechanism        Speed    Kernel per transfer?  Built-in sync?
+  ---------------  -------  --------------------  --------------
+  Shared memory    Fastest  No                    No
+  Pipes            Medium   Yes                   Yes
+  Message queues   Medium   Yes                   Yes
+  Sockets          Slower   Yes                   Yes
+
+Best for:
+- Shared memory: large or frequent data on one machine
+- Pipes: simple streams
+- Message queues: discrete messages
+- Sockets: network communication
+
+======================================================================
+SUMMARY
+======================================================================
+
+Shared memory lets processes share a region of RAM directly, which makes
+it the fastest IPC mechanism because it avoids kernel copies and
+per-transfer system calls. However, the operating system provides no
+coordination, so unsynchronized access causes race conditions and
+corrupted data. Shared memory must therefore always be paired with a
+synchronization mechanism such as semaphores or mutexes.
+
+ONE-LINE TAKEAWAY:
+Shared memory trades safety for speed, so the programmer must supply
+the safety.
