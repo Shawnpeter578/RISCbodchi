@@ -1,0 +1,34 @@
+1. What is a pipe?
+A pipe is a one-way communication channel that lets two processes exchange data. One process writes, the other reads.
+
+2. What are anonymous/unnamed pipes?
+Pipes with no name, used only between related processes like parent and child. They exist only while the processes run.
+
+3. What are named pipes (FIFO)? 
+Pipes that have a name and appear as a file. They can be used by unrelated processes that know the name.
+
+4. What are the advantages and limitations of pipes?
+Advantages: simple, fast, no complex setup. Limitations: one-way only, and unnamed pipes work only between related processes.
+
+5. Can you give a simple pipe example?
+int fd[2];
+pipe(fd);
+write(fd[1], "Hello", 6);
+read(fd[0], buffer, 6);
+The writer sends "Hello" and the reader receives it.
+
+6. What is a message queue?
+A message queue is a list of messages stored in kernel memory. Processes send and receive messages through it
+
+7. How are messages sent and received?
+msgsnd() – sends a message.
+msgrcv() – receives a message. Messages stay in the queue until they are read
+
+8. What are the advantages and common uses of message queues?
+Advantages: works between unrelated processes, two-way, supports priorities.
+Common uses: task scheduling, logging systems, and client-server communication.
+
+##Goal: Pipes give simple, direct communication between related processes, 
+while message queues give structured messaging between any processes 
+both help processes exchange data in an organized way.
+
