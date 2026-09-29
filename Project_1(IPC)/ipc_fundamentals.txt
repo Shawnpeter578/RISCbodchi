@@ -1,0 +1,104 @@
+IPC FUNDAMENTALS
+
+1. What is a Process?
+
+A process is a program that is currently running.
+
+For example, when we open a browser, calculator, or music player, the operating system creates a process for it.
+
+A process has its own memory, data, instructions, and resources.
+
+
+2. What is Inter-Process Communication (IPC)?
+
+Inter-Process Communication, or IPC, is a set of methods used by processes to communicate and exchange data with each other.
+
+Since processes normally have separate memory spaces, IPC provides a controlled way for them to share information and coordinate their activities.
+
+
+3. Why Do Processes Need to Communicate?
+
+Processes need communication when one process requires information or services from another process.
+
+For example:
+• One process may produce data while another process uses it.
+• Different processes may need to share information.
+• Processes may need to coordinate their activities.
+
+Without IPC, independent processes would not be able to easily exchange information or work together.
+
+
+4. Need for Synchronization
+
+When multiple processes work with the same resource, they must be properly coordinated.
+
+Synchronization makes sure that processes access shared resources in the correct order and prevents conflicts.
+
+For example, if two processes try to modify the same data at the same time, the data may become incorrect. Synchronization helps prevent this problem.
+
+
+5. IPC in Real-World Applications
+
+IPC is used in many everyday computer systems.
+
+Examples include:
+• A web browser communicating with other system processes.
+• A media player and audio-related processes working together.
+• Operating system services communicating with applications.
+• Different programs exchanging data or requesting services.
+
+
+6. Types of IPC
+
+IPC can be broadly understood through two purposes:
+
+A. Communication
+
+Used mainly to exchange data between processes.
+
+Examples:
+• Pipes
+• Message Queues
+• Shared Memory
+• Sockets
+
+B. Synchronization
+
+Used to coordinate processes and prevent conflicts.
+
+Examples:
+• Semaphores
+• Signals
+
+
+7. Basic IPC Example
+
+PROCESS 1  ──────── DATA / MESSAGE ────────>  PROCESS 2
+    |                                             |
+    |                                             |
+    └──────────── IPC MECHANISM ─────────────────┘
+
+
+Here, Process 1 sends information through an IPC mechanism, and Process 2 receives or uses that information.
+
+
+8. Simple Example to Explain in Presentation
+
+Suppose Process 1 is a producer that creates some data.
+
+Process 2 is a consumer that needs that data.
+
+Process 1 produces the data → IPC transfers the data → Process 2 receives the data.
+
+If both processes access a shared resource, synchronization may also be required to avoid conflicts.
+
+
+9. Key Point / Conclusion
+
+IPC exists because processes need a way to communicate and coordinate with each other.
+
+In simple words:
+
+“IPC allows processes to exchange information and work together safely.”
+
+This section introduces the basic idea of IPC. The next sections explain specific IPC methods such as pipes, message queues, shared memory, semaphores, signals, and sockets.
