@@ -1,12 +1,5 @@
 # RISCbodchi
 
-Weekly projects for **Computer Architecture & RISC**.
-
-## Projects
-
-* **Week 1:** Completed ✅
-* **Week 2:** Coming soon
-* **Week 3:** Coming soon
-* **Week 4:** Coming soon
+Weekly projects for **RISC BODCHI GANG**
 
 * Sayeeda, Grace, Vashishta, Shawn, Joylen
