@@ -1,1 +1,0 @@
-These images are illustrative mockups generated for the project documentation. Replace them with real screenshots from your running GUI before final submission if the UI differs.
