@@ -1,0 +1,38 @@
+# Compiled executable
+simulator
+*.out
+*.exe
+
+# Object files
+*.o
+*.obj
+
+# Debug symbols and core dumps
+*.dSYM/
+core
+core.*
+
+# Temporary and log files
+*.log
+*.tmp
+*.temp
+
+# Benchmark output
+benchmarks/results/
+benchmark_results/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build directories
+build/
+bin/
