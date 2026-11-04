@@ -1,0 +1,39 @@
+#include <string.h>
+#include "ipc.h"
+
+int mq_backend_init(IPCOps *);
+int pipe_backend_init(IPCOps *);
+int shm_backend_init(IPCOps *);
+int socket_backend_init(IPCOps *);
+int fifo_backend_init(IPCOps *);
+
+const char *ipc_name(IPCType t) {
+    switch(t) {
+        case IPC_POSIX_MQ:return "POSIX Message Queues";
+        case IPC_PIPE:return "Pipes";
+        case IPC_SHM:return "Shared Memory";
+        case IPC_SOCKET:return "Unix Domain Sockets";
+        case IPC_FIFO:return "FIFO (Named Pipes)";
+        default:return "Unknown";
+    }
+}
+int ipc_parse(const char *s) {
+    if (!s) return 0;
+    if (!strcmp(s,"1") || !strcmp(s,"mq")) return IPC_POSIX_MQ;
+    if (!strcmp(s,"2") || !strcmp(s,"pipe")) return IPC_PIPE;
+    if (!strcmp(s,"3") || !strcmp(s,"shm")) return IPC_SHM;
+    if (!strcmp(s,"4") || !strcmp(s,"socket")) return IPC_SOCKET;
+    if (!strcmp(s,"5") || !strcmp(s,"fifo")) return IPC_FIFO;
+    return 0;
+}
+int ipc_init(IPCType t, IPCOps *ops) {
+    memset(ops,0,sizeof(*ops));
+    switch(t) {
+        case IPC_POSIX_MQ:return mq_backend_init(ops);
+        case IPC_PIPE:return pipe_backend_init(ops);
+        case IPC_SHM:return shm_backend_init(ops);
+        case IPC_SOCKET:return socket_backend_init(ops);
+        case IPC_FIFO:return fifo_backend_init(ops);
+        default:return -1;
+    }
+}
