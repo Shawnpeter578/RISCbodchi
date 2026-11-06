@@ -1,6 +1,15 @@
-*.exe
+# Build artifacts and compiled objects
+build/
 *.o
-*.obj
-*.log
-.vscode/
-.idea/
+
+# Compiled binaries and executables
+page_sim
+page_sim_backend
+
+# Active runtime communication sockets
+*.sock
+page_sim.sock
+
+# OS specific temporary files
+.DS_Store
+Thumbs.db
