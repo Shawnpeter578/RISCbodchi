@@ -1,258 +1,136 @@
-# Multi-Process Page Replacement Simulator
+RISC-bodchi OS Simulator
 
-A C-based operating systems project that simulates and compares page replacement algorithms using multiple processes and inter-process communication (IPC).
+An interactive, multi-process Operating System and CPU simulator built in C. This project demonstrates Inter-Process Communication (IPC) using POSIX message queues, process creation using fork() and exec(), and real-time terminal UI rendering using ncurses.
 
-The project demonstrates how operating system concepts such as **process management, memory management, page replacement, and IPC mechanisms** work together in a practical application.
+Features
 
----
+Multi-Processing: Orchestrates three distinct processes running simultaneously (UI, Core, Logger).
 
-## Overview
+Inter-Process Communication: Uses POSIX message queues (mqueue.h) to pass commands and data between the UI, the CPU Core, and the Logger.
 
-When a process accesses a page that is not currently loaded into memory, a page fault occurs. If all available memory frames are occupied, the operating system must decide which page to remove to make space for the requested page.
+CPU Simulation: Simulates basic CPU operations including a Stack (LIFO), a Queue (FIFO), Random Access Memory (RAM), and an Arithmetic Logic Unit (ALU).
 
-This project implements a multi-process simulator to demonstrate and compare three commonly studied page replacement algorithms:
+Interactive UI: A visual terminal interface built with ncurses that displays live updates of the CPU state, logs, and responses.
 
-- **FIFO (First-In, First-Out)**
-- **LRU (Least Recently Used)**
-- **Optimal Page Replacement**
+Background Logging: A dedicated logger process records all system events in the background to a simulator.log file.
 
-The simulator accepts a page-reference sequence and frame count, executes the selected algorithm, and reports the number of page faults and page hits.
+Architecture & Operating System Concepts
 
-It also uses multiple IPC mechanisms to demonstrate communication between independent processes.
+This project models how a modern operating system manages separate programs running concurrently without letting them crash into each other.
 
-## Objectives
+The Theory: Core OS Concepts
 
-- Implement and compare FIFO, LRU, and Optimal page replacement algorithms.
-- Demonstrate process creation and communication in C.
-- Explore different IPC mechanisms available in POSIX systems.
-- Separate simulation logic, user interaction, and logging into distinct processes.
-- Analyze the performance and behavior of page replacement algorithms.
-- Provide a modular, maintainable, and reproducible project.
+Memory Isolation: In a modern OS like Linux, every process gets its own virtual memory space. The UI process cannot directly read or modify variables in the Core process. If the UI tries to force its way into the Core's memory, the OS triggers a segmentation fault.
 
-## Features
+Inter-Process Communication (IPC): Because memory is isolated, processes need a secure bridge to talk to each other. This project uses POSIX Message Queues, which act like secure mailboxes managed directly by the OS kernel.
 
-- Multi-process architecture using POSIX processes.
-- Support for FIFO, LRU, and Optimal page replacement.
-- Multiple IPC communication mechanisms.
-- Interactive input for frame count and page-reference sequence.
-- Page fault and page hit statistics.
-- Simulation logging.
-- Build automation using a Makefile.
-- Documentation covering architecture, IPC, testing, and benchmarking.
+Process Spawning: An OS doesn't just run one massive block of code. It uses a parent-child hierarchy to split workloads. The master launcher acts as the parent, creating exact clones of itself to handle different tasks.
 
-## Architecture
+CPU Architecture Simulation:
 
-The simulator is organized around three primary processes:
+Stack: Simulates a Last-In-First-Out (LIFO) memory structure using an array and a top pointer.
 
-| Process | Responsibility |
-|---|---|
-| UI / Main Process | Accepts user input, initiates simulations, and displays results. |
-| Core Process | Executes the selected page replacement algorithm and calculates statistics. |
-| Logger Process | Receives simulation messages and records relevant events. |
+Queue: Simulates a First-In-First-Out (FIFO) buffer using front and rear pointers.
 
-### Process communication
+ALU (Arithmetic Logic Unit): Handles the basic computational math (ADD, SUBTRACT).
 
-The processes communicate using IPC mechanisms supported by the project:
+RAM (Memory): Simulates random access memory where specific addresses hold specific values (STORE, LOAD).
 
-- POSIX Message Queues
-- Pipes
-- Shared Memory
-- Unix Domain Sockets
-- FIFO (Named Pipes)
+The Practical: Under the Hood in C
 
-Each mechanism demonstrates a different approach to exchanging data between processes.
+fork() and exec(): In main.c, fork() duplicates the launcher process. The child process then immediately calls exec() to overwrite its own memory with the compiled binary of either the Logger or the UI. The parent process just sits back and uses waitpid() to monitor them.
 
-## Page Replacement Algorithms
+Message Queues (mqueue.h):
 
-### FIFO
+The system creates three distinct queues: /riscbodchi_request (UI to Core), /riscbodchi_response (Core to UI), and /riscbodchi_log (Core to Logger).
 
-First-In, First-Out replaces the page that has been in memory the longest.
+They are opened with specific access flags. For example, the Logger opens its queue as O_RDONLY (Read-Only) because it only listens, while the Core opens it as O_WRONLY (Write-Only).
 
-### LRU
+Non-Blocking I/O & Concurrency: The ncurses UI loop in ui.c cannot freeze while waiting for the user to type or the Core to reply. It uses O_NONBLOCK on its message queues and WNOHANG in waitpid(). This ensures the UI constantly refreshes at 10 frames per second (timeout(100)), draining the queues and updating the screen in real-time.
 
-Least Recently Used replaces the page that has not been accessed for the longest period of time.
+Daemonization (Background Logging): The Logger is designed as a background daemon. When it is launched, main.c redirects its standard output to a physical file (simulator.log) using dup2(). This guarantees the Logger's printf statements don't spill onto the terminal and corrupt the graphical UI.
 
-### Optimal
+Graceful Shutdown: When you type quit, the UI sends an exit string to the Core. The Core breaks its infinite loop, cleans up its queues, and shuts down. The master launcher detects this, cleans up the UI, and sends a SIGTERM kill signal to terminate the background Logger, ensuring no zombie processes are left running.
 
-Optimal replaces the page whose next use is farthest in the future. It is primarily used as a theoretical benchmark because it requires knowledge of future page references.
+Prerequisites
 
-## Technologies
+This project requires a Linux environment (or Windows Subsystem for Linux - WSL) because it relies on POSIX standards for processes and message queues.
 
-- **Language:** C
-- **Operating System:** Linux / POSIX-compatible environment
-- **Process Management:** `fork()`, `wait()`
-- **IPC:** POSIX IPC mechanisms
-- **Build System:** GNU Make
+You will need the GCC compiler and the ncurses library installed.
+On Ubuntu/Debian/WSL, run:
 
-## Requirements
+sudo apt update
+sudo apt install build-essential libncurses5-dev libncursesw5-dev
 
-Before building the project, ensure that the following are installed:
 
-- GCC or another compatible C compiler
-- GNU Make
-- Linux or WSL with Ubuntu
-- POSIX development libraries
+Project Structure
 
-## Build
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-cd week4_multi_process_simulator
-```
-
-Compile the project:
-
-```bash
-make
-```
-
-## Run
-
-Launch the simulator:
-
-```bash
-./simulator
-```
-
-Follow the prompts to enter the number of memory frames, page-reference sequence, and algorithm.
-
-## Example
-
-Consider the following input:
-
-```text
-Number of frames: 3
-Page reference sequence:
-7 0 1 2 0 3 0 4 2 3 0 3 2
-```
-
-Expected results:
-
-| Algorithm | Page Faults | Page Hits |
-|---|---:|---:|
-| FIFO | 10 | 3 |
-| LRU | 9 | 4 |
-| Optimal | 7 | 6 |
-
-The results illustrate how different replacement strategies can produce different page-fault counts for the same reference sequence.
-
-## Project Structure
-
-```text
-week4_multi_process_simulator/
-│
-├── main.c
+.
 ├── Makefile
-├── README.md
-│
-├── processes/
-│   ├── core.c
-│   ├── logger.c
-│   └── ...
-│
-├── algorithms/
-│   ├── fifo.c
-│   ├── lru.c
-│   ├── optimal.c
-│   └── ...
-│
-├── ipc/
-│   ├── message_queue.c
-│   ├── pipe.c
-│   ├── shared_memory.c
-│   ├── unix_socket.c
-│   └── fifo.c
-│
-├── tests/
-│   ├── README.md
-│   └── test_cases.md
-│
-└── docs/
-    ├── architecture.md
-    ├── ipc_design.md
-    ├── testing.md
-    ├── benchmarking.md
-    └── performance_analysis.md
-```
+└── src/
+    ├── main.c      # Master launcher that forks the logger and UI
+    ├── ui.c        # The ncurses-based interactive interface
+    ├── core.c      # The CPU logic and command processor
+    └── logger.c    # Listens to IPC logs and writes them to a file
 
-> The structure above represents the intended organization. Update the file names if your implementation uses a different layout.
 
-## Testing
+Building the Project
 
-Testing focuses on verifying the correctness of page replacement algorithms and the reliability of inter-process communication.
+To compile the project, simply run the provided Makefile from the root directory:
 
-Test cases include:
+make
 
-- Page-reference sequences with repeated accesses.
-- Sequences that cause frequent page faults.
-- Different numbers of memory frames.
-- Empty or invalid input.
-- Comparison of algorithm results against expected values.
-- IPC communication and process termination.
 
-Refer to [`tests/test_cases.md`](tests/test_cases.md) and [`docs/testing.md`](docs/testing.md) for more information.
+This will compile the source files and place the binaries in a new build/ folder, as well as generate the master orchestrator binary riscbodchi_sim in the root folder.
 
-## Benchmarking and Performance Analysis
+To clean up the build files, run:
 
-The project includes documentation for benchmarking and analyzing the simulator.
+make clean
 
-The analysis can consider:
 
-- Page fault and page hit counts.
-- Execution time of each algorithm.
-- IPC communication overhead.
-- Differences between algorithmic behavior and total simulation runtime.
+Running the Simulator
 
-Refer to:
+Launch the simulator using the master binary:
 
-- [`docs/benchmarking.md`](docs/benchmarking.md)
-- [`docs/performance_analysis.md`](docs/performance_analysis.md)
+./riscbodchi_sim
 
-Benchmark values should be measured on the system where the simulator is run. Results may vary depending on hardware, operating system, compiler, and process scheduling.
 
-## Learning Outcomes
+Available Commands
 
-This project provides practical experience with:
+Once the UI is running, you can type the following commands at the risc> prompt:
 
-- Virtual memory and page replacement.
-- Multi-process programming in C.
-- POSIX process creation and synchronization.
-- Inter-process communication.
-- Modular software design.
-- Testing and performance analysis.
-- Linux development and build workflows.
+Stack Operations (LIFO)
 
-## Team Contributions
+PUSH <value>: Pushes an integer onto the top of the stack.
 
-The project is developed collaboratively, with responsibilities divided across IPC implementation and system integration.
+POP: Removes and returns the integer at the top of the stack.
 
-| Team Member | Responsibility |
-|---|---|
-| Member 1 | POSIX Message Queues |
-| Member 2 | Pipes |
-| Member 3 | Shared Memory |
-| Member 4 | Unix Domain Sockets |
-| Member 5 | FIFO / Named Pipes and integration |
+Queue Operations (FIFO)
 
-Update this section with the actual team members and their contributions.
+ENQUEUE <value>: Adds an integer to the back of the queue.
 
-## Limitations
+DEQUEUE: Removes and returns the integer at the front of the queue.
 
-- The Optimal algorithm assumes knowledge of future page references.
-- Simulation results depend on the selected reference sequence and frame count.
-- Execution time may include process scheduling and IPC overhead, not just algorithm computation.
-- The simulator models page replacement behavior and does not reproduce a complete operating system's virtual memory subsystem.
+Memory Management (RAM)
 
-## References
+STORE <address> <value>: Stores an integer value at a specific memory address (0-99).
 
-- Operating Systems concepts: virtual memory and page replacement.
-- POSIX process and IPC documentation.
-- Linux manual pages for `fork()`, `pipe()`, `wait()`, `shm_open()`, `mq_open()`, and Unix domain sockets.
+LOAD <address>: Retrieves the value currently stored at the specified memory address.
 
-## License
+Arithmetic (ALU)
 
-This project was developed for academic and educational purposes.
+ADD <a> <b>: Adds two integers and returns the result.
 
-Add a license here if the project is intended to be distributed under a specific open-source license.
+SUBTRACT <a> <b>: Subtracts b from a and returns the result.
+
+System Control
+
+help: Displays a list of available commands in the UI.
+
+quit (or exit): Gracefully shuts down the Core, UI, and Logger processes.
+
+Viewing Logs
+
+After exiting the simulator, you can view the background system logs generated during your session by reading the log file:
+
+cat simulator.log

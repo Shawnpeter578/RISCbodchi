@@ -1,18 +1,39 @@
-CC = gcc
-CFLAGS = -Iinclude -std=c11 -Wall -Wextra -Wpedantic -O2 -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE
-LDFLAGS = -pthread -lrt
-SRC = main.c algorithms/algorithms.c processes/core.c processes/logger.c ipc/ipc.c \
-      ipc/posix_mq.c ipc/pipes.c ipc/shared_memory.c ipc/sockets.c ipc/fifo.c
-OBJ = $(SRC:.c=.o)
+# Makefile for RISC-bodchi OS Simulator
+CC      := gcc
+CFLAGS  := -Wall -Wextra -O2
+LDLIBS  := -lrt
+NCLIBS  := -lncurses
 
-all: simulator
+BUILD   := build
 
-simulator: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LDFLAGS)
+CORE_SRC   := src/core.c
+UI_SRC     := src/ui.c
+LOGGER_SRC := src/logger.c
+MAIN_SRC   := src/main.c
 
-clean:
-	rm -f $(OBJ) simulator
-	rm -f /tmp/w4sim_fifo_*
-	rm -f /dev/mqueue/w4sim_*
+CORE_BIN   := $(BUILD)/core
+UI_BIN     := $(BUILD)/ui
+LOGGER_BIN := $(BUILD)/logger
+MAIN_BIN   := riscbodchi_sim
 
 .PHONY: all clean
+
+all: $(BUILD) $(CORE_BIN) $(UI_BIN) $(LOGGER_BIN) $(MAIN_BIN)
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+$(CORE_BIN): $(CORE_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
+
+$(UI_BIN): $(UI_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(NCLIBS) $(LDLIBS)
+
+$(LOGGER_BIN): $(LOGGER_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
+
+$(MAIN_BIN): $(MAIN_SRC)
+	$(CC) $(CFLAGS) -o $@ $<
+
+clean:
+	rm -rf $(BUILD) $(MAIN_BIN) simulator.log
